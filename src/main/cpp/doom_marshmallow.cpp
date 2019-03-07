@@ -6,6 +6,7 @@
 
 /**
  * http://androidxref.com/6.0.1_r10/xref/art/runtime/gc/heap.h
+ * http://androidxref.com/6.0.1_r10/xref/art/runtime/gc/heap-inl.h#418
  */
 
 typedef struct Marshmallow_Heap{
@@ -70,9 +71,9 @@ GcType marshmallowCollectGarbageInternal(void *heap, GcType gcType, int gcCause,
                 marshmallowHeap->max_allowed_footprint_ = marshmallowHeap->growth_limit_;
                 initial_concurrent_start_bytes = marshmallowHeap->concurrent_start_bytes_;
                 marshmallowHeap->concurrent_start_bytes_ = 1000 * SIZE_M;
-                DOOM_LOG("marshmallowCollectGarbageInternal invaild heap struct");
+                DOOM_LOG("marshmallowCollectGarbageInternal valid heap struct");
             } else {
-                DOOM_LOG("marshmallowCollectGarbageInternal invaild heap struct");
+                DOOM_LOG("marshmallowCollectGarbageInternal invalid heap struct");
                 dumpMarshmallowHeap(marshmallowHeap);
                 dooming = false;
                 marshmallowHeap = NULL;

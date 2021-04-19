@@ -86,9 +86,8 @@ GcType nougatCollectGarbageInternal(void *heap, GcType gcType, int gcCause, bool
     return oldNougatCollectGarbageInternal(heap, gcType, gcCause, clear_soft_references);
 }
 
-extern "C" JNIEXPORT jboolean JNICALL Java_com_doom_Doom_initDoomNougat(JNIEnv *env, jobject type,jint growthLimit,jint maxAllowedFootprint) {
+extern "C" JNIEXPORT jboolean JNICALL Java_com_doom_Doom_initDoomNougat(JNIEnv *env, jclass type,jint growthLimit,jint maxAllowedFootprint) {
     initial_growth_limit = growthLimit;
-    initDoom(env);
 
     char *allocateJavaSymbol = "_ZN3art2gc4Heap22CollectGarbageInternalENS0_9collector6GcTypeENS0_7GcCauseEb";
 
@@ -98,11 +97,11 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_doom_Doom_initDoomNougat(JNIEnv *
 
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_doom_Doom_doomNougat(JNIEnv *env, jobject type) {
+extern "C" JNIEXPORT void JNICALL Java_com_doom_Doom_doomNougat(JNIEnv *env, jclass type) {
     dooming = true;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_doom_Doom_unDoomNougat(JNIEnv *env, jobject type) {
+extern "C" JNIEXPORT void JNICALL Java_com_doom_Doom_unDoomNougat(JNIEnv *env, jclass type) {
     if(dooming){
         DOOM_LOG("unDoomNougat");
         nougatHeap->max_allowed_footprint_ = 2 * SIZE_M;

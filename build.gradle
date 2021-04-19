@@ -1,18 +1,26 @@
-apply plugin: 'com.android.application'
+import org.gradle.api.internal.artifacts.DefaultPublishArtifactSet
+import org.gradle.api.internal.artifacts.mvnsettings.DefaultLocalMavenRepositoryLocator
+import org.gradle.api.internal.artifacts.mvnsettings.DefaultMavenFileLocations
+import org.gradle.api.internal.artifacts.mvnsettings.DefaultMavenSettingsProvider
+import org.gradle.api.internal.artifacts.mvnsettings.LocalMavenRepositoryLocator
+import org.gradle.api.internal.artifacts.publish.DefaultPublishArtifact
+
+
+apply plugin: 'com.android.library'
+apply plugin: 'maven'
+
 
 android {
     compileSdkVersion 28
 
     defaultConfig {
-        applicationId "com.doom"
         minSdkVersion 19
         targetSdkVersion 25
         versionCode 1
         versionName "1.0"
         externalNativeBuild {
             cmake {
-                abiFilters "armeabi","armeabi-v7a","x86"
-                cppFlags "-std=c++11 -fexceptions -frtti"
+                abiFilters "armeabi-v7a","x86"
             }
         }
     }
@@ -35,9 +43,42 @@ android {
     }
 }
 
+group='com.antfin.doom'
+version='1.0.0'
+def mavenLocalRepo = ''
+
+afterEvaluate{
+    Task upload = tasks.create('uploadRemote', Upload)
+    upload.group = "upload";
+    upload.configuration = configurations.findByName('archives')
+    DefaultMavenFileLocations locations = new DefaultMavenFileLocations()
+    DefaultMavenSettingsProvider provider = new DefaultMavenSettingsProvider(locations)
+    LocalMavenRepositoryLocator locator = new DefaultLocalMavenRepositoryLocator(provider)
+
+    mavenLocalRepo = locator.localMavenRepository.absolutePath
+
+
+    uploadArchives {
+        repositories {
+            mavenDeployer {
+                repository (url: uri(mavenLocalRepo))
+            }
+        }
+    }
+
+    upload.repositories{
+        mavenDeployer {
+            repository(url: uri("http://mvn.cloud.alipay.com/nexus/content/repositories/releases")) {
+                authentication(userName: "xunlong.wxl", password: "wxNgwi9877")
+            }
+            pom.version = version
+            pom.artifactId = project.name
+            pom.groupId = group
+        }
+    }
+
+}
+
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-
-    implementation 'com.android.support.constraint:constraint-layout:1.1.3'
-
 }

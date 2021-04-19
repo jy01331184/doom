@@ -10,6 +10,11 @@ cmake_minimum_required(VERSION 3.4.1)
 # You can define multiple libraries, and CMake builds them for you.
 # Gradle automatically packages shared libraries with your APK.
 
+add_definitions(-Oz)
+
+add_definitions(-fno-rtti)
+add_definitions(-fno-exceptions)
+
 add_library( # Sets the name of the library.
              doom
 
@@ -21,6 +26,7 @@ add_library( # Sets the name of the library.
              src/main/cpp/doom_marshmallow.cpp
              src/main/cpp/doom_nougat.cpp
              src/main/cpp/doom_oreo.cpp
+             src/main/cpp/verify.cpp
              )
 
 # Searches for a specified prebuilt library and stores the path as a

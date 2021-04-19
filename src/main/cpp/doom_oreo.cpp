@@ -80,9 +80,8 @@ GcType oreoCollectGarbageInternal(void *heap, GcType gcType, int gcCause, bool c
     return oldOreoCollectGarbageInternal(heap, gcType, gcCause, clear_soft_references);
 }
 
-extern "C" JNIEXPORT jboolean JNICALL Java_com_doom_Doom_initDoomOreo(JNIEnv *env, jobject type,jint growthLimit,jint maxAllowedFootprint) {
+extern "C" JNIEXPORT jboolean JNICALL Java_com_doom_Doom_initDoomOreo(JNIEnv *env, jclass type,jint growthLimit,jint maxAllowedFootprint) {
     initial_growth_limit = growthLimit;
-    initDoom(env);
 
     char *allocateJavaSymbol = "_ZN3art2gc4Heap22CollectGarbageInternalENS0_9collector6GcTypeENS0_7GcCauseEb";
 
@@ -92,17 +91,17 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_doom_Doom_initDoomOreo(JNIEnv *en
 
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_doom_Doom_doomOreo(JNIEnv *env, jobject type) {
+extern "C" JNIEXPORT void JNICALL Java_com_doom_Doom_doomOreo(JNIEnv *env, jclass type) {
     dooming = true;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_doom_Doom_unDoomOreo(JNIEnv *env, jobject type) {
-    if(dooming){
+extern "C" JNIEXPORT void JNICALL Java_com_doom_Doom_unDoomOreo(JNIEnv *env, jclass type) {
+    if(dooming && oreoHeap){
         DOOM_LOG("unDoomOreo");
         oreoHeap->max_allowed_footprint_ = 2 * SIZE_M;
         oreoHeap->concurrent_start_bytes_ = initial_concurrent_start_bytes;
         dumpOreoHeap(oreoHeap);
     }
-    oreoHeap = NULL;
+    //oreoHeap = NULL;
     dooming = false;
 }

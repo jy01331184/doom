@@ -89,9 +89,8 @@ GcType marshmallowCollectGarbageInternal(void *heap, GcType gcType, int gcCause,
     return oldMarshmallowCollectGarbageInternal(heap, gcType, gcCause, clear_soft_references);
 }
 
-extern "C" JNIEXPORT jboolean JNICALL Java_com_doom_Doom_initDoomMarshmallow(JNIEnv *env, jobject type,jint growthLimit,jint maxAllowedFootprint) {
+extern "C" JNIEXPORT jboolean JNICALL Java_com_doom_Doom_initDoomMarshmallow(JNIEnv *env, jclass type,jint growthLimit,jint maxAllowedFootprint) {
     initial_growth_limit = growthLimit;
-    initDoom(env);
 
     char *allocateJavaSymbol = "_ZN3art2gc4Heap22CollectGarbageInternalENS0_9collector6GcTypeENS0_7GcCauseEb";
 
@@ -101,11 +100,11 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_doom_Doom_initDoomMarshmallow(JNI
 
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_doom_Doom_doomMarshmallow(JNIEnv *env, jobject type) {
+extern "C" JNIEXPORT void JNICALL Java_com_doom_Doom_doomMarshmallow(JNIEnv *env, jclass type) {
     dooming = true;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_doom_Doom_unDoomMarshmallow(JNIEnv *env, jobject type) {
+extern "C" JNIEXPORT void JNICALL Java_com_doom_Doom_unDoomMarshmallow(JNIEnv *env, jclass type) {
     if(dooming){
         DOOM_LOG("unDoomMarshmallow");
         marshmallowHeap->max_allowed_footprint_ = 2 * SIZE_M;

@@ -9,11 +9,11 @@
 #include "stddef.h"
 #include "android/log.h"
 extern bool dooming;
-extern jclass doomClass;
 extern int initial_growth_limit;
 extern int initial_concurrent_start_bytes;
-extern void initDoom(JNIEnv * env);
 extern int hook(char *libSo, char *targetSymbol, void *newFunc, void **oldFunc);
+extern int hook(void *funcPtr, void *newFunc, void **oldFunc);
+
 extern int search(int addr, int targetValue, int maxSearchTime);
 #define SIZE_M  (1024*1024)
 #define  DOOM_LOG_TAG    "doom_log"

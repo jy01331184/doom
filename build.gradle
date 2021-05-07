@@ -1,10 +1,7 @@
-import org.gradle.api.internal.artifacts.DefaultPublishArtifactSet
 import org.gradle.api.internal.artifacts.mvnsettings.DefaultLocalMavenRepositoryLocator
 import org.gradle.api.internal.artifacts.mvnsettings.DefaultMavenFileLocations
 import org.gradle.api.internal.artifacts.mvnsettings.DefaultMavenSettingsProvider
 import org.gradle.api.internal.artifacts.mvnsettings.LocalMavenRepositoryLocator
-import org.gradle.api.internal.artifacts.publish.DefaultPublishArtifact
-
 
 apply plugin: 'com.android.library'
 apply plugin: 'maven'
@@ -44,7 +41,7 @@ android {
 }
 
 group='com.antfin.doom'
-version='1.0.0'
+version='1.0.2'
 def mavenLocalRepo = ''
 
 afterEvaluate{

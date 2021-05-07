@@ -1,6 +1,7 @@
 //
 // Created by tianyang on 2018/11/13.
 //
+#include <dlfcn.h>
 #include "doom.h"
 #include "jni.h"
 
@@ -41,7 +42,7 @@ void dumpMarshmallowHeap(MarshmallowHeap *heap){
         DOOM_LOG("MarshmallowHeap capacity_=%um growth_limit_=%um max_allowed_footprint_=%um native_need_to_run_finalization_=%d process_state_=%d concurrent_start_bytes_=%um next_gc_type_=%d",heap->capacity_/SIZE_M,heap->growth_limit_/SIZE_M,heap->max_allowed_footprint_/SIZE_M,heap->native_need_to_run_finalization_,heap->process_state_,heap->concurrent_start_bytes_/SIZE_M,heap->next_gc_type_);
     }
 }
-
+bool compensation = false;
 MarshmallowHeap * marshmallowHeap;
 
 GcType (*oldMarshmallowCollectGarbageInternal)(void *heap, GcType gcType, int gcCause, bool clear_soft_references);
@@ -58,7 +59,7 @@ GcType marshmallowCollectGarbageInternal(void *heap, GcType gcType, int gcCause,
                 DOOM_LOG("try fix growth_index - 2 to growth_index - 1 ");
             }
             if(marshmallowHeap->capacity_ < marshmallowHeap->growth_limit_ || marshmallowHeap->process_state_ >=1 || marshmallowHeap->next_gc_type_  >4){
-                DOOM_LOG("marshmallowCollectGarbageInternal invaild heap struct");
+                DOOM_LOG("marshmallowCollectGarbageInternal invalid heap struct");
                 dumpMarshmallowHeap(marshmallowHeap);
                 dooming = false;
                 marshmallowHeap = NULL;
@@ -67,7 +68,7 @@ GcType marshmallowCollectGarbageInternal(void *heap, GcType gcType, int gcCause,
             dumpMarshmallowHeap(marshmallowHeap);
             int max_allowed_footprint_value = marshmallowHeap->max_allowed_footprint_/SIZE_M;
             int concurrent_start_bytes_value = marshmallowHeap->concurrent_start_bytes_/SIZE_M;
-            if(max_allowed_footprint_value > 0 && concurrent_start_bytes_value > 0){
+            if(max_allowed_footprint_value > 0 && concurrent_start_bytes_value >= 0){
                 marshmallowHeap->max_allowed_footprint_ = marshmallowHeap->growth_limit_;
                 initial_concurrent_start_bytes = marshmallowHeap->concurrent_start_bytes_;
                 marshmallowHeap->concurrent_start_bytes_ = 1000 * SIZE_M;
@@ -83,20 +84,35 @@ GcType marshmallowCollectGarbageInternal(void *heap, GcType gcType, int gcCause,
             dooming = false;
             DOOM_LOG("marshmallowCollectGarbageInternal can't find growth_index");
         }
+    } else if(dooming && marshmallowHeap && compensation){
+        DOOM_LOG("marshmallowCollectGarbageInternal compensation from %um to %um",marshmallowHeap->max_allowed_footprint_/SIZE_M,marshmallowHeap->growth_limit_/SIZE_M);
+        marshmallowHeap->max_allowed_footprint_ = marshmallowHeap->growth_limit_;
+        marshmallowHeap->concurrent_start_bytes_ = 1000 * SIZE_M;
+        compensation = false;
+        return GcType::kGcTypeSticky;
     }
+//    size_t heapSize = marshmallowHeap ? marshmallowHeap->max_allowed_footprint_/SIZE_M:0;
+//    DOOM_LOG("marshmallowCollectGarbageInternal heap:%um GcType=%d GcCause=%d",heapSize,gcType,gcCause);
 
-    DOOM_LOG("marshmallowCollectGarbageInternal GcType=%d GcCause=%d",gcType,gcCause);
-    return oldMarshmallowCollectGarbageInternal(heap, gcType, gcCause, clear_soft_references);
+    GcType ret = oldMarshmallowCollectGarbageInternal(heap, gcType, gcCause, clear_soft_references);
+    compensation = true;
+    return ret;
 }
 
-extern "C" JNIEXPORT jboolean JNICALL Java_com_doom_Doom_initDoomMarshmallow(JNIEnv *env, jclass type,jint growthLimit,jint maxAllowedFootprint) {
+extern "C" JNIEXPORT jboolean JNICALL Java_com_doom_Doom_initDoomMarshmallow(JNIEnv *env, jclass type,jlong growthLimit) {
     initial_growth_limit = growthLimit;
 
-    char *allocateJavaSymbol = "_ZN3art2gc4Heap22CollectGarbageInternalENS0_9collector6GcTypeENS0_7GcCauseEb";
+    void *artso = dlopen("libart.so",RTLD_LAZY);
+    if(artso){
+        void* func = (dlsym(artso, "_ZN3art2gc4Heap22CollectGarbageInternalENS0_9collector6GcTypeENS0_7GcCauseEb"));
+        DOOM_LOG("Art gc func addr=%p",func);
+        if(func){
+            int result = hook(func,(void*)(marshmallowCollectGarbageInternal),(void**)(&oldMarshmallowCollectGarbageInternal));
+            return result ? JNI_TRUE : JNI_FALSE;
+        }
+    }
 
-    jint result = hook("libart.so", allocateJavaSymbol, (void *) marshmallowCollectGarbageInternal, (void **) &oldMarshmallowCollectGarbageInternal);
-
-    return result ? JNI_TRUE : JNI_FALSE;
+    return JNI_FALSE;
 
 }
 

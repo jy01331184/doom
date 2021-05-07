@@ -2,6 +2,7 @@ package com.doom;
 
 import android.content.Context;
 import android.os.Build;
+import android.util.Log;
 
 
 public class Doom {
@@ -13,8 +14,12 @@ public class Doom {
     public static boolean init(Context context) {
         if (init == STATE_UNINITED) {
             init = STATE_INAVAILABLE;
-            System.loadLibrary("doom");
-            init = initGlobal() ? STATE_AVAILABLE : init;
+            try {
+                System.loadLibrary("doom");
+                init = initGlobal() ? STATE_AVAILABLE : init;
+            } catch (Throwable t){
+                t.printStackTrace();
+            }
         }
         return init == STATE_AVAILABLE;
     }
@@ -66,22 +71,27 @@ public class Doom {
         }
 
         if (gcAvailable == STATE_UNINITED) {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
                 gcAvailable = STATE_INAVAILABLE;
+            } else if(Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT){
+                gcAvailable = initDoomDalvik(Runtime.getRuntime().maxMemory(),VMUtil.getTargetHeapUtilization()) ? STATE_AVAILABLE : STATE_INAVAILABLE;
             } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M) {
-                gcAvailable = initDoomMarshmallow((int) Runtime.getRuntime().maxMemory(), (int) Runtime.getRuntime().totalMemory()) ? STATE_AVAILABLE : STATE_INAVAILABLE;
+                gcAvailable = initDoomMarshmallow(Runtime.getRuntime().maxMemory()) ? STATE_AVAILABLE : STATE_INAVAILABLE;
             } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.N_MR1) {
-                gcAvailable = initDoomNougat((int) Runtime.getRuntime().maxMemory(), (int) Runtime.getRuntime().totalMemory()) ? STATE_AVAILABLE : STATE_INAVAILABLE;
+                //gcAvailable = initDoomNougat((int) Runtime.getRuntime().maxMemory(), (int) Runtime.getRuntime().totalMemory()) ? STATE_AVAILABLE : STATE_INAVAILABLE;
             } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
-                gcAvailable = initDoomOreo((int) Runtime.getRuntime().maxMemory(), (int) Runtime.getRuntime().totalMemory()) ? STATE_AVAILABLE : STATE_INAVAILABLE;
+                //gcAvailable = initDoomOreo((int) Runtime.getRuntime().maxMemory(), (int) Runtime.getRuntime().totalMemory()) ? STATE_AVAILABLE : STATE_INAVAILABLE;
             }
         }
 
         if (gcAvailable != STATE_AVAILABLE) {
+            Log.e("Doom","pauseGc NOT AVAILABLE");
             return false;
         }
 
-        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M) {
+        if( Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT){
+            doomMDalvik();
+        } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M) {
             doomMarshmallow();
         } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.N_MR1) {
             doomNougat();
@@ -101,13 +111,16 @@ public class Doom {
             return false;
         }
 
-        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M) {
+        if( Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT){
+            unDoomDalvik();
+        } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M) {
             unDoomMarshmallow();
         } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.N_MR1) {
             unDoomNougat();
         } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
             unDoomOreo();
         }
+        Runtime.getRuntime().gc();
         return true;
     }
 
@@ -116,10 +129,16 @@ public class Doom {
      */
     private static native boolean initGlobal();
 
+    private static native boolean initDoomDalvik(long growthLimit,float targetHeapUtilization);
+
+    private static native void doomMDalvik();
+
+    private static native void unDoomDalvik();
+
     /**
      * 5.0、5.1、6.0
      */
-    private static native boolean initDoomMarshmallow(int growthLimit, int maxAllowedFootprint);
+    private static native boolean initDoomMarshmallow(long growthLimit);
 
     private static native void doomMarshmallow();
 
@@ -153,5 +172,7 @@ public class Doom {
 
     private static native void pauseVerify(boolean pause);
 
+    public static native void setHookLogEnable(boolean enable);
 
+    public static native void dump();
 }

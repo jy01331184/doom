@@ -23,6 +23,7 @@ add_library( # Sets the name of the library.
 
              # Provides a relative path to your source file(s).
              src/main/cpp/doom.cpp
+             src/main/cpp/doom_dalvik.cpp
              src/main/cpp/doom_marshmallow.cpp
              src/main/cpp/doom_nougat.cpp
              src/main/cpp/doom_oreo.cpp

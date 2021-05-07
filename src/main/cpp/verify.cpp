@@ -7,12 +7,15 @@
 #include "jni.h"
 
 bool pauseVerify = false;
+bool hookLog = false;
 
 bool (*originKitkatVerifyClass)(void* clazz);
 
 bool hookedKitkatVerifyClass(void* clazz){
     if(pauseVerify){
-        DOOM_LOG("hookedKitkatVerifyClass %p",clazz);
+        if(hookLog){
+            DOOM_LOG("hookedKitkatVerifyClass %p",clazz);
+        }
     } else {
         return originKitkatVerifyClass(clazz);
     }
@@ -23,7 +26,9 @@ bool (*originL2MVerifyClassOatFile)(void* linker);
 
 bool hookedL2MVerifyClassOatFile(void* linker) {
     if(pauseVerify){
-        DOOM_LOG("hookedL2MVerifyClass");
+        if(hookLog){
+            DOOM_LOG("hookedL2MVerifyClass");
+        }
         return true;
     } else {
         bool ret = originL2MVerifyClassOatFile(linker);
@@ -65,4 +70,10 @@ Java_com_doom_Doom_initVerifyL2M(JNIEnv *env, jclass clazz) {
         }
     }
     return JNI_FALSE;
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_doom_Doom_setHookLogEnable(JNIEnv *env, jclass clazz, jboolean enable) {
+    hookLog = enable;
 }

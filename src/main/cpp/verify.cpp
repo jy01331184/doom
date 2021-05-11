@@ -42,7 +42,7 @@ Java_com_doom_Doom_initVerifyKitkat(JNIEnv *env, jclass clazz) {
     void *dvmso = dlopen("libdvm.so", RTLD_LAZY);
     if( dvmso ) {
         void* func = (dlsym(dvmso, "_Z14dvmVerifyClassP11ClassObject"));
-        DOOM_LOG("Kitkat verify func addr=%p",func);
+        DOOM_INFO("Kitkat verify func addr=%p",func);
         if(func){
             int result = hook(func,(void*)(hookedKitkatVerifyClass),(void**)(&originKitkatVerifyClass));
             return result ? JNI_TRUE : JNI_FALSE;
@@ -54,6 +54,7 @@ Java_com_doom_Doom_initVerifyKitkat(JNIEnv *env, jclass clazz) {
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_doom_Doom_pauseVerify(JNIEnv *env, jclass clazz,jboolean pause) {
+    DOOM_INFO("change verify %d",pause);
     pauseVerify = pause;
 }
 
@@ -63,7 +64,7 @@ Java_com_doom_Doom_initVerifyL2M(JNIEnv *env, jclass clazz) {
     void *artso = dlopen("libart.so",RTLD_LAZY);
     if(artso){
         void* func = (dlsym(artso, "_ZN3art11ClassLinker23VerifyClassUsingOatFileERKNS_7DexFileEPNS_6mirror5ClassERNS5_6StatusE"));
-        DOOM_LOG("Art verify func addr=%p",func);
+        DOOM_INFO("Art verify func addr=%p",func);
         if(func){
             int result = hook(func,(void*)(hookedL2MVerifyClassOatFile),(void**)(&originL2MVerifyClassOatFile));
             return result ? JNI_TRUE : JNI_FALSE;

@@ -28,6 +28,7 @@ add_library( # Sets the name of the library.
              src/main/cpp/doom_nougat.cpp
              src/main/cpp/doom_oreo.cpp
              src/main/cpp/verify.cpp
+             src/main/cpp/checkjni.cpp
              )
 
 # Searches for a specified prebuilt library and stores the path as a

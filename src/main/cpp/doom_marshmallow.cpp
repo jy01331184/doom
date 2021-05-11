@@ -4,6 +4,7 @@
 #include <dlfcn.h>
 #include "doom.h"
 #include "jni.h"
+#include "art.h"
 
 /**
  * http://androidxref.com/6.0.1_r10/xref/art/runtime/gc/heap.h
@@ -56,10 +57,10 @@ GcType marshmallowCollectGarbageInternal(void *heap, GcType gcType, int gcCause,
             marshmallowHeap = reinterpret_cast<MarshmallowHeap *>(pHeap + (growth_index - 2) );
             if(marshmallowHeap->capacity_ < marshmallowHeap->growth_limit_ || marshmallowHeap->process_state_ >=1 || marshmallowHeap->next_gc_type_  >4){
                 marshmallowHeap = reinterpret_cast<MarshmallowHeap *>(pHeap + (growth_index - 1));
-                DOOM_LOG("try fix growth_index - 2 to growth_index - 1 ");
+                DOOM_INFO("try fix growth_index - 2 to growth_index - 1 ");
             }
             if(marshmallowHeap->capacity_ < marshmallowHeap->growth_limit_ || marshmallowHeap->process_state_ >=1 || marshmallowHeap->next_gc_type_  >4){
-                DOOM_LOG("marshmallowCollectGarbageInternal invalid heap struct");
+                DOOM_INFO("marshmallowCollectGarbageInternal invalid heap struct");
                 dumpMarshmallowHeap(marshmallowHeap);
                 dooming = false;
                 marshmallowHeap = NULL;
@@ -72,9 +73,9 @@ GcType marshmallowCollectGarbageInternal(void *heap, GcType gcType, int gcCause,
                 marshmallowHeap->max_allowed_footprint_ = marshmallowHeap->growth_limit_;
                 initial_concurrent_start_bytes = marshmallowHeap->concurrent_start_bytes_;
                 marshmallowHeap->concurrent_start_bytes_ = 1000 * SIZE_M;
-                DOOM_LOG("marshmallowCollectGarbageInternal valid heap struct");
+                DOOM_INFO("marshmallowCollectGarbageInternal valid heap struct");
             } else {
-                DOOM_LOG("marshmallowCollectGarbageInternal invalid heap struct");
+                DOOM_INFO("marshmallowCollectGarbageInternal invalid heap struct");
                 dumpMarshmallowHeap(marshmallowHeap);
                 dooming = false;
                 marshmallowHeap = NULL;
@@ -82,10 +83,10 @@ GcType marshmallowCollectGarbageInternal(void *heap, GcType gcType, int gcCause,
             return GcType::kGcTypeSticky;
         } else {
             dooming = false;
-            DOOM_LOG("marshmallowCollectGarbageInternal can't find growth_index");
+            DOOM_INFO("marshmallowCollectGarbageInternal can't find growth_index");
         }
     } else if(dooming && marshmallowHeap && compensation){
-        DOOM_LOG("marshmallowCollectGarbageInternal compensation from %um to %um",marshmallowHeap->max_allowed_footprint_/SIZE_M,marshmallowHeap->growth_limit_/SIZE_M);
+        DOOM_INFO("marshmallowCollectGarbageInternal compensation from %um to %um",marshmallowHeap->max_allowed_footprint_/SIZE_M,marshmallowHeap->growth_limit_/SIZE_M);
         marshmallowHeap->max_allowed_footprint_ = marshmallowHeap->growth_limit_;
         marshmallowHeap->concurrent_start_bytes_ = 1000 * SIZE_M;
         compensation = false;
@@ -99,13 +100,13 @@ GcType marshmallowCollectGarbageInternal(void *heap, GcType gcType, int gcCause,
     return ret;
 }
 
-extern "C" JNIEXPORT jboolean JNICALL Java_com_doom_Doom_initDoomMarshmallow(JNIEnv *env, jclass type,jlong growthLimit) {
+extern "C" JNIEXPORT jboolean JNICALL Java_com_doom_Doom_initGcMarshmallow(JNIEnv *env, jclass type,jlong growthLimit) {
     initial_growth_limit = growthLimit;
 
     void *artso = dlopen("libart.so",RTLD_LAZY);
     if(artso){
         void* func = (dlsym(artso, "_ZN3art2gc4Heap22CollectGarbageInternalENS0_9collector6GcTypeENS0_7GcCauseEb"));
-        DOOM_LOG("Art gc func addr=%p",func);
+        DOOM_INFO("Art gc func addr=%p",func);
         if(func){
             int result = hook(func,(void*)(marshmallowCollectGarbageInternal),(void**)(&oldMarshmallowCollectGarbageInternal));
             return result ? JNI_TRUE : JNI_FALSE;
@@ -116,13 +117,14 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_doom_Doom_initDoomMarshmallow(JNI
 
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_doom_Doom_doomMarshmallow(JNIEnv *env, jclass type) {
+extern "C" JNIEXPORT void JNICALL Java_com_doom_Doom_pauseGcMarshmallow(JNIEnv *env, jclass type) {
+    DOOM_INFO("pauseGc");
     dooming = true;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_doom_Doom_unDoomMarshmallow(JNIEnv *env, jclass type) {
+extern "C" JNIEXPORT void JNICALL Java_com_doom_Doom_resumeGcMarshmallow(JNIEnv *env, jclass type) {
     if(dooming){
-        DOOM_LOG("unDoomMarshmallow");
+        DOOM_INFO("resumeGc");
         marshmallowHeap->max_allowed_footprint_ = 2 * SIZE_M;
         marshmallowHeap->concurrent_start_bytes_ = initial_concurrent_start_bytes;
         dumpMarshmallowHeap(marshmallowHeap);

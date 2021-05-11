@@ -3,7 +3,9 @@
 //
 #include <dlfcn.h>
 #include <sys/time.h>
+#include <malloc.h>
 #include "doom.h"
+#include "sys/system_properties.h"
 
 typedef int (*PUDGE_HOOK_FUNCTION)(char *libSo, char *targetSymbol, void *newFunc, void **oldFunc);
 typedef int (*PUDGE_HOOK_FUNCTION_DIRECT)(void* funcPtr,void* newFunc, void ** oldFunc);
@@ -18,7 +20,10 @@ int initial_growth_limit;
 int initial_concurrent_start_bytes;
 double cost = 0;
 bool dooming = false;
-
+JavaVM* vm;
+jobject logger;
+jmethodID logInfoMethod;
+jmethodID logErrorMethod;
 const char * PUDGE_SO = "libpudge.so";
 
 
@@ -56,24 +61,73 @@ double getCurrentTime(){
     return tv.tv_sec * 1000 + tv.tv_usec / 1000.0;
 }
 
+JNIEnv* getEnv(){
+    JNIEnv* env;
+    if(vm->GetEnv((void **)&env,JNI_VERSION_1_6) != JNI_OK){
+        vm->AttachCurrentThread(&env,0);
+    }
+    return env;
+}
+
+void doLog(int level,const char* message,...){
+    va_list args;
+    va_start(args,message);
+
+    int mallocSize = 3;
+    char* buf = static_cast<char *>(malloc(mallocSize));
+    int needSize = vsnprintf(buf,mallocSize,message,args);
+
+    if(needSize > mallocSize){
+        buf = static_cast<char *>(realloc(buf, needSize + 1));
+        vsnprintf(buf,needSize+1,message,args);
+    }
+    JNIEnv *env = getEnv();
+    jstring jmessage = env->NewStringUTF(buf);
+    if(level == ANDROID_LOG_ERROR){
+        env->CallVoidMethod(logger, logErrorMethod, jmessage);
+    } else if(level == ANDROID_LOG_INFO){
+        env->CallVoidMethod(logger,logInfoMethod,jmessage);
+    }
+    env->DeleteLocalRef(jmessage);
+    free(buf);
+    va_end(args);
+}
+
+
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_doom_Doom_initGlobal(JNIEnv *env, jclass clazz) {
+Java_com_doom_Doom_initGlobal(JNIEnv *env, jclass clazz,jobject ctx,jobject l) {
+    logger = env->NewGlobalRef(l);
+    jclass loggerCls = env->GetObjectClass(logger);
+    logInfoMethod = env->GetMethodID(loggerCls,"info","(Ljava/lang/String;)V");
+    logErrorMethod = env->GetMethodID(loggerCls, "severe", "(Ljava/lang/String;)V");
+    int ret = env->GetJavaVM(&vm);
+
+//    char prop[256];
+//    int hasProp = __system_property_get("debug.doom",prop);
+//
+//    if(hasProp){
+//        DOOM_LOG("prop %s,%d",prop,hasProp);
+//    }
+
+    if(ret != JNI_OK){
+        DOOM_ERROR("GetJavaVM fail");
+        return JNI_FALSE;
+    }
+
     void *handle = dlopen(PUDGE_SO, RTLD_LAZY);
     if (handle) {
-        DOOM_LOG("initDoom dlopen success");
+        DOOM_INFO("initDoom dlopen success");
         pudgeHookFunction = (PUDGE_HOOK_FUNCTION)dlsym(handle, "_ZN5pudge12hookFunctionEPcS0_PvPS1_");
         pudgeHookFunctionDirect = (PUDGE_HOOK_FUNCTION_DIRECT)dlsym(handle,"_ZN5pudge12hookFunctionEPvS0_PS0_");
         pudgeSearchFunction = (PUDGE_SEARCH_FUNCTION)dlsym(handle, "_ZN5pudge6searchEiii");
         pudgeIsGoodPtrFunction = (PUDGE_IS_GOOD_PTR_FUNCTION)dlsym(handle,"_ZN5pudge9isGoodPtrEPv");
-
-        DOOM_LOG("pudgeHookFunction %p,pudgeSearchFunction %p",pudgeHookFunction,pudgeSearchFunction);
-        if(pudgeHookFunction && pudgeHookFunctionDirect && pudgeSearchFunction){
+        DOOM_INFO("hook=%p,hookDir=%p,search=%p,isGood=%p",pudgeHookFunction,pudgeHookFunctionDirect,pudgeSearchFunction,pudgeIsGoodPtrFunction);
+        if(pudgeHookFunction && pudgeHookFunctionDirect && pudgeSearchFunction && pudgeIsGoodPtrFunction){
             return JNI_TRUE;
         }
-
     } else {
-        DOOM_LOG("initDoom dlopen fail");
+        DOOM_ERROR("initDoom dlopen fail");
     }
 
     return JNI_FALSE;
@@ -82,5 +136,5 @@ Java_com_doom_Doom_initGlobal(JNIEnv *env, jclass clazz) {
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_doom_Doom_dump(JNIEnv *env, jclass clazz) {
-    DOOM_LOG("doom total gc cost:%llf",cost);
+    //DOOM_LOG("doom total gc cost:%llf",cost);
 }

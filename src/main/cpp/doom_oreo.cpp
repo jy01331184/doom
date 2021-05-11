@@ -3,7 +3,7 @@
 //
 #include "doom.h"
 #include "jni.h"
-
+#include "art.h"
 /**
  * http://androidxref.com/8.0.0_r4/xref/art/runtime/gc/heap.h
  */

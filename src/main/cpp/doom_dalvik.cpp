@@ -50,7 +50,7 @@ int locateByCardTableBase(int addr,uintptr_t cardRet,int time) {
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_doom_Doom_initDoomDalvik(JNIEnv *env, jclass clazz, jlong growth_limit,jfloat targetHeapUtilization) {
+Java_com_doom_Doom_initGcDalvik(JNIEnv *env, jclass clazz, jlong growth_limit,jfloat targetHeapUtilization) {
 
     if(globalHeap != NULL){
         return JNI_TRUE;
@@ -58,13 +58,13 @@ Java_com_doom_Doom_initDoomDalvik(JNIEnv *env, jclass clazz, jlong growth_limit,
 
     void *dvmso = dlopen("libdvm.so", RTLD_LAZY);
     if(dvmso == NULL){
-        DOOM_LOG("dlopen libdvm.so fail");
+        DOOM_ERROR("dlopen libdvm.so fail");
         return JNI_FALSE;
     }
 
     int* pDvm = static_cast<int *>(dlsym(dvmso, "gDvm"));
     if(pDvm == NULL){
-        DOOM_LOG("dlsym dvm fail");
+        DOOM_ERROR("dlsym dvm fail");
         return JNI_FALSE;
     }
 
@@ -72,7 +72,7 @@ Java_com_doom_Doom_initDoomDalvik(JNIEnv *env, jclass clazz, jlong growth_limit,
 
     dvmAddrFromCard f = reinterpret_cast<dvmAddrFromCard>(dlsym(dvmso, "_Z15dvmAddrFromCardPKh"));
     if(f == NULL){
-        DOOM_LOG("can't locate dvmAddrFromCard");
+        DOOM_ERROR("can't locate dvmAddrFromCard");
         return JNI_FALSE;
     }
 
@@ -81,46 +81,46 @@ Java_com_doom_Doom_initDoomDalvik(JNIEnv *env, jclass clazz, jlong growth_limit,
     int index = locateByCardTableBase(dvmAddr ,ret,400);
 
     if(index < 0){
-        DOOM_LOG("can't locate gcHeap from dvm");
+        DOOM_ERROR("can't locate gcHeap from dvm");
         return JNI_FALSE;
     }
 
     GcHeap * gcHeap = reinterpret_cast<GcHeap *>(*(pDvm + index));
     if(!isGoodPtr(gcHeap) || !isGoodPtr(gcHeap->heapSource)) {
-        DOOM_LOG("gcHeap inavailable offset=%d", index);
+        DOOM_ERROR("gcHeap inavailable offset=%d", index);
         return JNI_FALSE;
     }
 
-    DOOM_LOG("located gcHeap at %p,offset=%d,heapSource=%p", gcHeap, index, gcHeap->heapSource);
+    DOOM_INFO("located gcHeap at %p,offset=%d,heapSource=%p", gcHeap, index, gcHeap->heapSource);
 
     HeapSource* heapSource = gcHeap->heapSource;
     //validate gcHeap
     if(heapSource->growthLimit != growth_limit || heapSource->growthLimit > heapSource->maximumSize){
-        DOOM_LOG("gcHeap inavailable growthLimit %d:%d", heapSource->growthLimit,growth_limit);
+        DOOM_ERROR("gcHeap inavailable growthLimit %d:%d", heapSource->growthLimit,growth_limit);
         return JNI_FALSE;
     }
 
     if(heapSource->numHeaps <= 0 || heapSource->numHeaps > 2){
-        DOOM_LOG("gcHeap inavailable numHeaps %d", heapSource->numHeaps);
+        DOOM_ERROR("gcHeap inavailable numHeaps %d", heapSource->numHeaps);
         return JNI_FALSE;
     }
 
     if(heapSource->minFree < 500 * SIZE_K || heapSource->minFree > 20 * SIZE_M || heapSource->maxFree < 1 * SIZE_M || heapSource->maxFree > 128 * SIZE_M || heapSource->maxFree < heapSource->minFree){
-        DOOM_LOG("gcHeap inavailable min=%d,max=%d", heapSource->minFree,heapSource->maxFree);
+        DOOM_ERROR("gcHeap inavailable min=%d,max=%d", heapSource->minFree,heapSource->maxFree);
         return JNI_FALSE;
     }
 
     if(heapSource->targetUtilization != targetHeapUtilization * HEAP_UTILIZATION_MAX){
-        DOOM_LOG("gcHeap inavailable targetUtilization=%d,%lf", heapSource->targetUtilization,targetHeapUtilization);
+        DOOM_ERROR("gcHeap inavailable targetUtilization=%d,%lf", heapSource->targetUtilization,targetHeapUtilization);
         return JNI_FALSE;
     }
 
-    DOOM_LOG("gcHeap targetUtilization=%d numHeap=%d", gcHeap->heapSource->targetUtilization,gcHeap->heapSource->numHeaps);
-    DOOM_LOG("growth=%dMb,maxSize=%dMb,maxFree=%dMb,minfree=%uKb",
+    DOOM_INFO("gcHeap targetUtilization=%d numHeap=%d", gcHeap->heapSource->targetUtilization,gcHeap->heapSource->numHeaps);
+    DOOM_INFO("growth=%dMb,maxSize=%dMb,maxFree=%dMb,minfree=%uKb",
              gcHeap->heapSource->growthLimit / SIZE_M, gcHeap->heapSource->maximumSize / SIZE_M,
              gcHeap->heapSource->maxFree / SIZE_M, gcHeap->heapSource->minFree / SIZE_K);
-    DOOM_LOG("heap softlimit:%u=%u", gcHeap->heapSource->softLimit, UINT32_MAX);
-    DOOM_LOG("heap concurrent:%uMb",gcHeap->heapSource->heaps[0].concurrentStartBytes/SIZE_M);
+    DOOM_INFO("heap softlimit:%u=%u", gcHeap->heapSource->softLimit, UINT32_MAX);
+    DOOM_INFO("heap concurrent:%uMb",gcHeap->heapSource->heaps[0].concurrentStartBytes/SIZE_M);
     void* func = (dlsym(dvmso, "_Z25dvmCollectGarbageInternalPK6GcSpec"));
     if(func){
         int result = hook(func,(void*)(hookedDvmCollectGarbageInternal),(void**)(&oldDvmCollectGarbageInternal));
@@ -132,8 +132,9 @@ Java_com_doom_Doom_initDoomDalvik(JNIEnv *env, jclass clazz, jlong growth_limit,
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_doom_Doom_doomMDalvik(JNIEnv *env, jclass clazz) {
+Java_com_doom_Doom_pauseGcDalvik(JNIEnv *env, jclass clazz) {
     if(globalHeap){
+        DOOM_INFO("pauseGc");
         originMaxFree = globalHeap->heapSource->maxFree;
         originTtargetUtilization = globalHeap->heapSource->targetUtilization;
         globalHeap->heapSource->heaps[0].concurrentStartBytes = 1024*SIZE_M;
@@ -144,11 +145,11 @@ Java_com_doom_Doom_doomMDalvik(JNIEnv *env, jclass clazz) {
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_doom_Doom_unDoomDalvik(JNIEnv *env, jclass clazz) {
+Java_com_doom_Doom_resumeGcDalvik(JNIEnv *env, jclass clazz) {
     if(globalHeap){
+        DOOM_INFO("resumeGc");
         globalHeap->heapSource->targetUtilization = originTtargetUtilization;
         globalHeap->heapSource->maxFree = originMaxFree;
-        DOOM_LOG("resumeGc");
     }
 
 //    DOOM_LOG("heap max:%dMb",globalHeap->heapSource->maximumSize/SIZE_M);

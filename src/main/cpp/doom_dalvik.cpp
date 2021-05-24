@@ -121,13 +121,15 @@ Java_com_doom_Doom_initGcDalvik(JNIEnv *env, jclass clazz, jlong growth_limit,jf
              gcHeap->heapSource->maxFree / SIZE_M, gcHeap->heapSource->minFree / SIZE_K);
     DOOM_INFO("heap softlimit:%u=%u", gcHeap->heapSource->softLimit, UINT32_MAX);
     DOOM_INFO("heap concurrent:%uMb",gcHeap->heapSource->heaps[0].concurrentStartBytes/SIZE_M);
-    void* func = (dlsym(dvmso, "_Z25dvmCollectGarbageInternalPK6GcSpec"));
-    if(func){
-        int result = hook(func,(void*)(hookedDvmCollectGarbageInternal),(void**)(&oldDvmCollectGarbageInternal));
-        globalHeap = gcHeap;
-        return result ? JNI_TRUE : JNI_FALSE;
-    }
-    return JNI_FALSE;
+    globalHeap = gcHeap;
+
+//    void* func = (dlsym(dvmso, "_Z25dvmCollectGarbageInternalPK6GcSpec"));
+//    if(func){
+//        int result = hook(func,(void*)(hookedDvmCollectGarbageInternal),(void**)(&oldDvmCollectGarbageInternal));
+//
+//        return result ? JNI_TRUE : JNI_FALSE;
+//    }
+    return JNI_TRUE;
 }
 
 extern "C"
@@ -135,11 +137,15 @@ JNIEXPORT void JNICALL
 Java_com_doom_Doom_pauseGcDalvik(JNIEnv *env, jclass clazz) {
     if(globalHeap){
         DOOM_INFO("pauseGc");
+        watchSig();
+        dooming = true;
         originMaxFree = globalHeap->heapSource->maxFree;
         originTtargetUtilization = globalHeap->heapSource->targetUtilization;
         globalHeap->heapSource->heaps[0].concurrentStartBytes = 1024*SIZE_M;
         globalHeap->heapSource->targetUtilization = 1;
         globalHeap->heapSource->maxFree = 1024 * SIZE_M;
+    } else {
+        DOOM_ERROR("pauseGc globalHeap null,unreachable code");
     }
 }
 
@@ -148,8 +154,12 @@ JNIEXPORT void JNICALL
 Java_com_doom_Doom_resumeGcDalvik(JNIEnv *env, jclass clazz) {
     if(globalHeap){
         DOOM_INFO("resumeGc");
+        unwatchSig();
+        dooming = false;
         globalHeap->heapSource->targetUtilization = originTtargetUtilization;
         globalHeap->heapSource->maxFree = originMaxFree;
+    } else {
+
     }
 
 //    DOOM_LOG("heap max:%dMb",globalHeap->heapSource->maximumSize/SIZE_M);

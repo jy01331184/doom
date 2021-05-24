@@ -2,7 +2,7 @@ package com.doom;
 
 import java.lang.reflect.Method;
 
-public class VMUtil {
+class VMUtil {
     static float getTargetHeapUtilization(){
         Class cls = null;
         try {

@@ -6,6 +6,8 @@ import org.gradle.api.internal.artifacts.mvnsettings.LocalMavenRepositoryLocator
 apply plugin: 'com.android.library'
 apply plugin: 'maven'
 
+group='com.antfin.doom'
+version='1.0.3.2'
 
 android {
     compileSdkVersion 28
@@ -19,6 +21,7 @@ android {
                 abiFilters "armeabi-v7a","x86"
             }
         }
+        buildConfigField("String","VERSION","\"$version\"")
     }
 
     buildTypes {
@@ -39,8 +42,6 @@ android {
     }
 }
 
-group='com.antfin.doom'
-version='1.0.2'
 def mavenLocalRepo = ''
 
 afterEvaluate{

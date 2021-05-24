@@ -7,7 +7,7 @@
 #include "jni.h"
 
 bool pauseVerify = false;
-bool hookLog = false;
+
 
 bool (*originKitkatVerifyClass)(void* clazz);
 

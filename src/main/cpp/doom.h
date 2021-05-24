@@ -10,6 +10,7 @@
 #include "android/log.h"
 extern bool dooming;
 extern double cost;
+extern bool hookLog;
 extern int initial_growth_limit;
 extern int initial_concurrent_start_bytes;
 extern int hook(char *libSo, char *targetSymbol, void *newFunc, void **oldFunc);
@@ -17,10 +18,10 @@ extern int hook(void *funcPtr, void *newFunc, void **oldFunc);
 extern bool isGoodPtr(void* ptr);
 
 extern double getCurrentTime();
-
 extern int search(int addr, int targetValue, int maxSearchTime);
-
 extern void doLog(int level,const char* message,...);
+extern void watchSig();
+extern void unwatchSig();
 
 #define SIZE_M  (1024*1024)
 #define SIZE_K  (1024)

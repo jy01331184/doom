@@ -4,6 +4,7 @@
 #include <dlfcn.h>
 #include <sys/time.h>
 #include <malloc.h>
+#include <asm/signal.h>
 #include "doom.h"
 #include "sys/system_properties.h"
 
@@ -21,9 +22,12 @@ int initial_concurrent_start_bytes;
 double cost = 0;
 bool dooming = false;
 JavaVM* vm;
+jclass doomClass;
 jobject logger;
 jmethodID logInfoMethod;
 jmethodID logErrorMethod;
+jmethodID onSigEventMethod;
+bool hookLog = false;
 const char * PUDGE_SO = "libpudge.so";
 
 
@@ -92,15 +96,48 @@ void doLog(int level,const char* message,...){
     free(buf);
     va_end(args);
 }
+bool watched = false;
+struct sigaction oldAbrtHandler;
 
+void doomHandler(int sigNo){
+    __android_log_print(ANDROID_LOG_ERROR,"fatal","doomHandler %d",sigNo);
+    if(dooming){
+        JNIEnv *env = getEnv();
+        if(env){
+            env->CallStaticVoidMethod(doomClass,onSigEventMethod,sigNo);
+        }
+    }
+    if(sigNo == SIGABRT){
+        oldAbrtHandler.sa_handler(sigNo);
+    }
+}
+
+void watchSig(){
+    if(!watched){
+        struct sigaction newaction;
+        newaction.sa_handler = doomHandler;
+        newaction.sa_flags = 0;
+        sigaction( SIGABRT, &newaction, &oldAbrtHandler);
+        watched = true;
+    }
+}
+
+void unwatchSig(){
+    if(watched){
+        sigaction( SIGABRT, &oldAbrtHandler, NULL);
+        watched = false;
+    }
+}
 
 extern "C"
 JNIEXPORT jboolean JNICALL
 Java_com_doom_Doom_initGlobal(JNIEnv *env, jclass clazz,jobject ctx,jobject l) {
     logger = env->NewGlobalRef(l);
     jclass loggerCls = env->GetObjectClass(logger);
+    doomClass = static_cast<jclass>(env->NewGlobalRef(clazz));
     logInfoMethod = env->GetMethodID(loggerCls,"info","(Ljava/lang/String;)V");
     logErrorMethod = env->GetMethodID(loggerCls, "severe", "(Ljava/lang/String;)V");
+    onSigEventMethod = env->GetStaticMethodID(clazz,"onSigEvent", "(I)V");
     int ret = env->GetJavaVM(&vm);
 
 //    char prop[256];

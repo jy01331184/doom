@@ -2,20 +2,22 @@ package com.doom;
 
 import android.content.Context;
 import android.os.Build;
+
 import java.util.logging.Logger;
 
-
 public class Doom {
+    public static String VERSION = BuildConfig.VERSION;
+
     private static final int STATE_UNINITED = 0, STATE_AVAILABLE = 1, STATE_INAVAILABLE = -1;
     private static int init = STATE_UNINITED;
     private static int verifyAvailable,gcAvailable,checkJNIAvailable = STATE_UNINITED;
     private static Logger logger = Logger.getLogger("doom");
+    private static SigListener sigListener;
 
     public static boolean init(Context context) {
         if (init == STATE_UNINITED) {
             init = STATE_INAVAILABLE;
             try {
-                logger = Logger.getLogger("doom");
                 System.loadLibrary("doom");
                 init = initGlobal(context == null?null:context.getApplicationContext(),logger) ? STATE_AVAILABLE : init;
             } catch (Throwable t){
@@ -78,7 +80,7 @@ public class Doom {
             } else if(Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT){
                 gcAvailable = initGcDalvik(Runtime.getRuntime().maxMemory(),VMUtil.getTargetHeapUtilization()) ? STATE_AVAILABLE : STATE_INAVAILABLE;
             } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M) {
-                gcAvailable = initGcMarshmallow(Runtime.getRuntime().maxMemory()) ? STATE_AVAILABLE : STATE_INAVAILABLE;
+                gcAvailable = initGcL2M(Runtime.getRuntime().maxMemory()) ? STATE_AVAILABLE : STATE_INAVAILABLE;
             } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.N_MR1) {
                 //gcAvailable = initDoomNougat((int) Runtime.getRuntime().maxMemory(), (int) Runtime.getRuntime().totalMemory()) ? STATE_AVAILABLE : STATE_INAVAILABLE;
             } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
@@ -94,7 +96,7 @@ public class Doom {
         if( Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT){
             pauseGcDalvik();
         } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M) {
-            pauseGcMarshmallow();
+            pauseGcL2M();
         } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.N_MR1) {
             //doomNougat();
         } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
@@ -116,13 +118,12 @@ public class Doom {
         if( Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT){
             resumeGcDalvik();
         } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M) {
-            resumeGcMarshmallow();
+            resumeGcL2M();
         } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.N_MR1) {
             //unDoomNougat();
         } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
             //unDoomOreo();
         }
-        Runtime.getRuntime().gc();
         return true;
     }
 
@@ -138,7 +139,7 @@ public class Doom {
                 checkJNIAvailable = STATE_INAVAILABLE;
             }
             if(Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT){
-                checkJNIAvailable =  STATE_INAVAILABLE;
+                checkJNIAvailable = initCheckJNIDalvik() ? STATE_AVAILABLE : STATE_INAVAILABLE;;
             } else {
                 checkJNIAvailable = initCheckJNIL2M() ? STATE_AVAILABLE : STATE_INAVAILABLE;
             }
@@ -168,11 +169,11 @@ public class Doom {
     /**
      * 5.0、5.1、6.0
      */
-    private static native boolean initGcMarshmallow(long growthLimit);
+    private static native boolean initGcL2M(long growthLimit);
 
-    private static native void pauseGcMarshmallow();
+    private static native void pauseGcL2M();
 
-    private static native void resumeGcMarshmallow();
+    private static native void resumeGcL2M();
 
     /**
      * 7.0、7.1
@@ -205,6 +206,8 @@ public class Doom {
     /**
      *  checkjni
      */
+    private static native boolean initCheckJNIDalvik();
+
     private static native boolean initCheckJNIL2M();
 
     private native static void nativeCheckJNI(boolean open);
@@ -216,7 +219,26 @@ public class Doom {
         return logger;
     }
 
-    static native void setHookLogEnable(boolean enable);
+    public static native void setHookLogEnable(boolean enable);
+
+    public static void setSigListener(SigListener listener) {
+        sigListener = listener;
+    }
+
+    /**
+     * called from native
+     * @param sig
+     */
+    private static void onSigEvent(int sig){
+        if(sigListener != null){
+            sigListener.onSigEvent(sig);
+        }
+    }
+
+    public interface SigListener {
+        int SIGABRT = 6,SIGSEGV = 11;
+        void onSigEvent(int sig);
+    }
 
     static native void dump();
 }

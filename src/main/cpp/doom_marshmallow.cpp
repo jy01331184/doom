@@ -126,13 +126,13 @@ extern "C" JNIEXPORT void JNICALL Java_com_doom_Doom_pauseGcL2M(JNIEnv *env, jcl
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_doom_Doom_resumeGcL2M(JNIEnv *env, jclass type) {
-    if(dooming){
-        DOOM_INFO("resumeGc");
-        unwatchSig();
+    DOOM_INFO("resumeGc");
+    if(dooming && marshmallowHeap){
         marshmallowHeap->max_allowed_footprint_ = 2 * SIZE_M;
         marshmallowHeap->concurrent_start_bytes_ = initial_concurrent_start_bytes;
         dumpMarshmallowHeap(marshmallowHeap);
     }
+    unwatchSig();
     marshmallowHeap = NULL;
     dooming = false;
 }

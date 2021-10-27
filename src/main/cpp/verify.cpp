@@ -74,6 +74,13 @@ Java_com_doom_Doom_initVerifyL2M(JNIEnv *env, jclass clazz) {
 }
 
 extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_doom_Doom_initVerifyN(JNIEnv *env, jclass clazz) {
+    int result = hook("libart.so","_ZN3art11ClassLinker23VerifyClassUsingOatFileERKNS_7DexFileEPNS_6mirror5ClassERNS5_6StatusE",(void*)(hookedL2MVerifyClassOatFile),(void**)(&originL2MVerifyClassOatFile));
+    return result ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C"
 JNIEXPORT void JNICALL
 Java_com_doom_Doom_setHookLogEnable(JNIEnv *env, jclass clazz, jboolean enable) {
     hookLog = enable;

@@ -10,42 +10,45 @@ public class Doom {
 
     private static final int STATE_UNINITED = 0, STATE_AVAILABLE = 1, STATE_INAVAILABLE = -1;
     private static int init = STATE_UNINITED;
-    private static int verifyAvailable,gcAvailable,checkJNIAvailable = STATE_UNINITED;
+    private static int verifyAvailable, gcAvailable, checkJNIAvailable = STATE_UNINITED;
     private static Logger logger = Logger.getLogger("doom");
     private static SigListener sigListener;
 
     public static boolean init(Context context) {
         if (init == STATE_UNINITED) {
             init = STATE_INAVAILABLE;
+            logger.severe("Doom init version:" + VERSION);
             try {
                 System.loadLibrary("doom");
-                init = initGlobal(context == null?null:context.getApplicationContext(),logger) ? STATE_AVAILABLE : init;
-            } catch (Throwable t){
-                logger.severe("Doom init fail:"+t.getMessage());
+                init = initGlobal(context == null ? null : context.getApplicationContext(), logger) ? STATE_AVAILABLE : init;
+            } catch (Throwable t) {
+                logger.severe("Doom init fail:" + t.getMessage());
             }
         }
         return init == STATE_AVAILABLE;
     }
 
-    public static boolean pauseVerify(){
+    public static boolean pauseVerify() {
         if (init == STATE_UNINITED) {
             throw new IllegalStateException("Doom has not init");
-        } else if(init == STATE_INAVAILABLE){
+        } else if (init == STATE_INAVAILABLE) {
             return false;
         }
 
-        if(verifyAvailable == STATE_UNINITED){
-            if(Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT || Build.VERSION.SDK_INT > Build.VERSION_CODES.M){
+        if (verifyAvailable == STATE_UNINITED) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT || Build.VERSION.SDK_INT > Build.VERSION_CODES.N_MR1) {
                 verifyAvailable = STATE_INAVAILABLE;
             }
-            if(Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT){
+            if (Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT) {
                 verifyAvailable = initVerifyKitkat() ? STATE_AVAILABLE : STATE_INAVAILABLE;
-            } else {
+            } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M) {
                 verifyAvailable = initVerifyL2M() ? STATE_AVAILABLE : STATE_INAVAILABLE;
+            } else {
+                verifyAvailable = initVerifyN() ? STATE_AVAILABLE : STATE_INAVAILABLE;
             }
         }
 
-        if(verifyAvailable != STATE_AVAILABLE){
+        if (verifyAvailable != STATE_AVAILABLE) {
             logger.severe("pauseVerify NOT AVAILABLE");
             return false;
         }
@@ -53,13 +56,13 @@ public class Doom {
         return true;
     }
 
-    public static boolean resumeVerify(){
+    public static boolean resumeVerify() {
         if (init == STATE_UNINITED) {
             throw new IllegalStateException("Doom has not init");
-        } else if(init == STATE_INAVAILABLE){
+        } else if (init == STATE_INAVAILABLE) {
             return false;
         }
-        if(verifyAvailable != STATE_AVAILABLE){
+        if (verifyAvailable != STATE_AVAILABLE) {
             return false;
         }
         pauseVerify(false);
@@ -69,7 +72,7 @@ public class Doom {
     public static boolean pauseGc() {
         if (init == STATE_UNINITED) {
             throw new IllegalStateException("Doom has not init");
-        } else if(init == STATE_INAVAILABLE){
+        } else if (init == STATE_INAVAILABLE) {
             return false;
         }
 
@@ -77,8 +80,8 @@ public class Doom {
             gcAvailable = STATE_INAVAILABLE;
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
                 gcAvailable = STATE_INAVAILABLE;
-            } else if(Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT){
-                gcAvailable = initGcDalvik(Runtime.getRuntime().maxMemory(),VMUtil.getTargetHeapUtilization()) ? STATE_AVAILABLE : STATE_INAVAILABLE;
+            } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT) {
+                gcAvailable = initGcDalvik(Runtime.getRuntime().maxMemory(), VMUtil.getTargetHeapUtilization()) ? STATE_AVAILABLE : STATE_INAVAILABLE;
             } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M) {
                 gcAvailable = initGcL2M(Runtime.getRuntime().maxMemory()) ? STATE_AVAILABLE : STATE_INAVAILABLE;
             } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.N_MR1) {
@@ -93,7 +96,7 @@ public class Doom {
             return false;
         }
 
-        if( Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT){
+        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT) {
             pauseGcDalvik();
         } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M) {
             pauseGcL2M();
@@ -108,14 +111,14 @@ public class Doom {
     public static boolean resumeGc() {
         if (init == STATE_UNINITED) {
             throw new IllegalStateException("Doom has not init");
-        } else if(init == STATE_INAVAILABLE){
+        } else if (init == STATE_INAVAILABLE) {
             return false;
         }
         if (gcAvailable != STATE_AVAILABLE) {
             return false;
         }
 
-        if( Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT){
+        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT) {
             resumeGcDalvik();
         } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M) {
             resumeGcL2M();
@@ -127,25 +130,26 @@ public class Doom {
         return true;
     }
 
-    public static boolean checkJNI(boolean open){
+    public static boolean checkJNI(boolean open) {
         if (init == STATE_UNINITED) {
             throw new IllegalStateException("Doom has not init");
-        } else if(init == STATE_INAVAILABLE){
+        } else if (init == STATE_INAVAILABLE) {
             return false;
         }
 
-        if(checkJNIAvailable == STATE_UNINITED){
-            if(Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT || Build.VERSION.SDK_INT > Build.VERSION_CODES.M){
+        if (checkJNIAvailable == STATE_UNINITED) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT || Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {
                 checkJNIAvailable = STATE_INAVAILABLE;
             }
-            if(Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT){
-                checkJNIAvailable = initCheckJNIDalvik() ? STATE_AVAILABLE : STATE_INAVAILABLE;;
+            if (Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT) {
+                checkJNIAvailable = initCheckJNIDalvik() ? STATE_AVAILABLE : STATE_INAVAILABLE;
+                ;
             } else {
                 checkJNIAvailable = initCheckJNIL2M() ? STATE_AVAILABLE : STATE_INAVAILABLE;
             }
         }
 
-        if(checkJNIAvailable != STATE_AVAILABLE){
+        if (checkJNIAvailable != STATE_AVAILABLE) {
             logger.severe("checkJNI NOT AVAILABLE");
             return false;
         }
@@ -155,12 +159,23 @@ public class Doom {
         return true;
     }
 
+
+    public static boolean clearWebviewReserveSpace() {
+        int sdkVersion = Build.VERSION.SDK_INT;
+        if (sdkVersion < Build.VERSION_CODES.LOLLIPOP || sdkVersion > 30) {
+            return false;
+        }
+
+        return nativeClearWebviewReserveSpace(sdkVersion,Doom.class.getClassLoader());
+    }
+
+
     /**
      * global init
      */
-    private static native boolean initGlobal(Context context,Logger logger);
+    private static native boolean initGlobal(Context context, Logger logger);
 
-    private static native boolean initGcDalvik(long growthLimit,float targetHeapUtilization);
+    private static native boolean initGcDalvik(long growthLimit, float targetHeapUtilization);
 
     private static native void pauseGcDalvik();
 
@@ -201,16 +216,23 @@ public class Doom {
 
     private static native boolean initVerifyL2M();
 
+    private static native boolean initVerifyN();
+
     private static native void pauseVerify(boolean pause);
 
     /**
-     *  checkjni
+     * checkjni
      */
     private static native boolean initCheckJNIDalvik();
 
     private static native boolean initCheckJNIL2M();
 
     private native static void nativeCheckJNI(boolean open);
+
+    /**
+     * webview
+     */
+    private static native boolean nativeClearWebviewReserveSpace(int sdkVersion,ClassLoader loader);
 
     /**
      * others
@@ -227,16 +249,18 @@ public class Doom {
 
     /**
      * called from native
+     *
      * @param sig
      */
-    private static void onSigEvent(int sig){
-        if(sigListener != null){
+    private static void onSigEvent(int sig) {
+        if (sigListener != null) {
             sigListener.onSigEvent(sig);
         }
     }
 
     public interface SigListener {
-        int SIGABRT = 6,SIGSEGV = 11;
+        int SIGABRT = 6, SIGSEGV = 11;
+
         void onSigEvent(int sig);
     }
 

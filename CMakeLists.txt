@@ -15,6 +15,22 @@ add_definitions(-Oz)
 add_definitions(-fno-rtti)
 add_definitions(-fno-exceptions)
 
+include_directories(src/main/cpp/xhook)
+
+add_library( # Sets the name of the library.
+        pudge
+        # Sets the library as a shared library.
+        SHARED
+        # Provides a relative path to your source file(s).
+        IMPORTED)
+
+set_target_properties(
+        pudge
+        PROPERTIES IMPORTED_LOCATION
+        ${PROJECT_SOURCE_DIR}/libs/${ANDROID_ABI}/libpudge.so)
+
+
+
 add_library( # Sets the name of the library.
              doom
 
@@ -29,6 +45,7 @@ add_library( # Sets the name of the library.
              src/main/cpp/doom_oreo.cpp
              src/main/cpp/verify.cpp
              src/main/cpp/checkjni.cpp
+             src/main/cpp/webview.cpp
              )
 
 # Searches for a specified prebuilt library and stores the path as a
@@ -50,7 +67,7 @@ find_library( # Sets the name of the path variable.
 
 target_link_libraries( # Specifies the target library.
                        doom
-
+                       pudge
                        # Links the target library to the log library
                        # included in the NDK.
                        ${log-lib} )

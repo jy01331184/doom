@@ -108,6 +108,6 @@ extern "C" JNIEXPORT void JNICALL Java_com_doom_Doom_unDoomNougat(JNIEnv *env, j
         nougatHeap->concurrent_start_bytes_ = initial_concurrent_start_bytes;
         dumpNougatHeap(nougatHeap);
     }
-    nougatHeap = NULL;
+    //nougatHeap = NULL;
     dooming = false;
 }

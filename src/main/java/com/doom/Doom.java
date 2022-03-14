@@ -130,6 +130,23 @@ public class Doom {
         return true;
     }
 
+    public static boolean tripHeap(){
+        if (init == STATE_UNINITED) {
+            throw new IllegalStateException("Doom has not init");
+        } else if (init == STATE_INAVAILABLE) {
+            return false;
+        }
+        if (gcAvailable != STATE_AVAILABLE) {
+            return false;
+        }
+
+        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT) {
+            return tripHeapDalvik();
+        }
+
+        return false;
+    }
+
     public static boolean checkJNI(boolean open) {
         if (init == STATE_UNINITED) {
             throw new IllegalStateException("Doom has not init");
@@ -180,6 +197,8 @@ public class Doom {
     private static native void pauseGcDalvik();
 
     private static native void resumeGcDalvik();
+
+    private static native boolean tripHeapDalvik();
 
     /**
      * 5.0、5.1、6.0

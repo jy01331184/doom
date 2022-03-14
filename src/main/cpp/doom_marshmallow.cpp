@@ -133,6 +133,6 @@ extern "C" JNIEXPORT void JNICALL Java_com_doom_Doom_resumeGcL2M(JNIEnv *env, jc
         dumpMarshmallowHeap(marshmallowHeap);
     }
     unwatchSig();
-    marshmallowHeap = NULL;
+    //marshmallowHeap = NULL;
     dooming = false;
 }

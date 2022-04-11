@@ -36,10 +36,11 @@ public class Doom {
         }
 
         if (verifyAvailable == STATE_UNINITED) {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT || Build.VERSION.SDK_INT > Build.VERSION_CODES.N_MR1) {
+            if(Build.VERSION.SDK_INT == Build.VERSION_CODES.Q){
+                verifyAvailable = initVerifyQ() ? STATE_AVAILABLE : STATE_INAVAILABLE;
+            } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT || Build.VERSION.SDK_INT > Build.VERSION_CODES.N_MR1) {
                 verifyAvailable = STATE_INAVAILABLE;
-            }
-            if (Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT) {
+            } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.KITKAT) {
                 verifyAvailable = initVerifyKitkat() ? STATE_AVAILABLE : STATE_INAVAILABLE;
             } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M) {
                 verifyAvailable = initVerifyL2M() ? STATE_AVAILABLE : STATE_INAVAILABLE;
@@ -236,6 +237,8 @@ public class Doom {
     private static native boolean initVerifyL2M();
 
     private static native boolean initVerifyN();
+
+    private static native boolean initVerifyQ();
 
     private static native void pauseVerify(boolean pause);
 

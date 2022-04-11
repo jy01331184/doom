@@ -27,7 +27,7 @@ bool (*originL2MVerifyClassOatFile)(void* linker);
 bool hookedL2MVerifyClassOatFile(void* linker) {
     if(pauseVerify){
         if(hookLog){
-            DOOM_LOG("hookedL2MVerifyClass");
+            DOOM_LOG("hooked VerifyClass");
         }
         return true;
     } else {
@@ -77,6 +77,13 @@ extern "C"
 JNIEXPORT jboolean JNICALL
 Java_com_doom_Doom_initVerifyN(JNIEnv *env, jclass clazz) {
     int result = hook("libart.so","_ZN3art11ClassLinker23VerifyClassUsingOatFileERKNS_7DexFileEPNS_6mirror5ClassERNS5_6StatusE",(void*)(hookedL2MVerifyClassOatFile),(void**)(&originL2MVerifyClassOatFile));
+    return result ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_doom_Doom_initVerifyQ(JNIEnv *env, jclass clazz) {
+    int result = hook("libart.so","_ZN3art11ClassLinker23VerifyClassUsingOatFileERKNS_7DexFileENS_6ObjPtrINS_6mirror5ClassEEERNS_11ClassStatusE",(void*)(hookedL2MVerifyClassOatFile),(void**)(&originL2MVerifyClassOatFile));
     return result ? JNI_TRUE : JNI_FALSE;
 }
 
